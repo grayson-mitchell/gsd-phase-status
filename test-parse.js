@@ -473,6 +473,30 @@ eq(p.parseActivePhase(at('Phase 12 blocked on the completed Phase 11')), '12',
 eq(p.parseActivePhase(at('PHASE 23.1 COMPLETE.') + '\n**Current focus:** Phase 35 — cutover\n'), '35',
   'active: falls through to the body focus line');
 
+// --- ...and the focus line can say NOTHING is in flight ---
+// The stopped_at guard above sends a just-closed phase here, where the focus
+// line reporting that same phase as complete used to name it active — the same
+// finished-phase-painted-yellow bug, through the other door. Measured live on
+// GameLib phase 46 (2026-09-25): 7/7 summaries and 4/4 green gate artifacts,
+// folder rollup `complete`, folder painted inprogress.
+const focus = (v) => at('Phase 46 complete -- 46-07 live re-gate PASS') + `\n**Current focus:** ${v}\n`;
+eq(p.parseActivePhase(focus('None active — Phase 46 completed 2026-09-25; Phase 47 is gated on an email reply')),
+  null, 'active: "None active" outranks the phase numbers on its own line');
+eq(p.parseActivePhase(focus('Nothing in flight')), null, 'active: "Nothing" sentinel');
+eq(p.parseActivePhase(focus('n/a until the email lands')), null, 'active: "n/a" sentinel');
+// The sentinel has to LEAD, or a live phase whose note happens to contain the
+// word goes dark — the PARKED_WEAK lesson, reapplied.
+eq(p.parseActivePhase(focus('Phase 47 — none of the gates have run yet')), '47',
+  'active: a trailing "none" does not idle a live phase');
+// End to end: the focus line says nothing is live, so the folder evidence wins.
+{
+  const R = '\n### Phase 46: Windows single-instance guard\nAll seven waves are complete.\n';
+  const built = p.buildPhaseMap(R, focus('None active — Phase 46 completed 2026-09-25'));
+  p.applyFolderState(built.phases, new Map([['46', 'complete']]));
+  eq(built.active, null, 'active: idle focus line yields no active phase end to end');
+  eq(built.phases.get('46').status, 'complete', 'active: idle focus line lets the folder paint 46 green');
+}
+
 // End to end: three sources agree a phase is done, and it must come out green.
 {
   const R = '\n### Phase 23.1: Native LZMA depot decode (INSERTED)\nAll five waves are complete.\n';

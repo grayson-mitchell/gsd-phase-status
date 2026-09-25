@@ -582,9 +582,23 @@ function parseActivePhase(text) {
     }
   }
 
-  // 3. Body phrasings GSD writes.
+  // 3. The body's focus line, which is the one place GSD can say "nothing is in
+  //    flight" — and it had no way to be heard. Scan focus lines in order and
+  //    let the FIRST one carrying a verdict answer: a LEADING none/nothing/idle
+  //    sentinel means no phase is active. Without it the phase-number scan takes
+  //    whatever number the line mentions first, which on a just-closed phase is
+  //    the phase being reported COMPLETE — the same yellow-finished-phase bug
+  //    `stopped_at` is guarded against above, arriving by the other door.
+  //    The sentinel has to LEAD the value, like PARKED_WORDS: "Phase 47, none of
+  //    the gates run yet" is a live phase, not an idle tree.
+  for (const line of text.match(/current\s+focus[^\n]*/gi) || []) {
+    if (/^current\s+focus[^A-Za-z0-9]*(?:none|nothing|idle|n\/a)\b/i.test(line)) return null;
+    const m = line.match(new RegExp(`phase\\s*[-_ ]?0*(${PHASE_NUM})`, 'i')); // "**Current focus:** Phase 34"
+    if (m) return normalizePhaseNum(m[1]);
+  }
+
+  // 3b. Other body phrasings GSD writes.
   const patterns = [
-    new RegExp(`current\\s+focus[^\\n]*?phase\\s*[-_ ]?0*(${PHASE_NUM})`, 'i'), // "**Current focus:** Phase 34"
     new RegExp(`phase\\s*[:\\-]?\\s*0*(${PHASE_NUM})[^\\n]*\\bexecuting\\b`, 'i'), // "Phase: 34 (...) — EXECUTING"
     new RegExp(`(?:active|current)[\\s_-]*phase\\s*[:=]?\\s*#?\\s*0*(${PHASE_NUM})`, 'i'),
   ];
