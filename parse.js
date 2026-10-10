@@ -13,6 +13,7 @@ const ORDER = [
   'discussed',
   'complete',
   'parked',
+  'superseded',
   'pending',
   'unknown',
 ];
@@ -26,7 +27,7 @@ const UPGRADEABLE = new Set(['pending', 'unknown', null]);
  * and the phase is still cited by its successors, so without this a mention is
  * enough to repaint a stood-down phase as live work.
  */
-const SETTLED = new Set(['complete', 'blocked', 'parked']);
+const SETTLED = new Set(['complete', 'blocked', 'parked', 'superseded']);
 
 /**
  * Phase numbers are hierarchical and can nest any number of levels deep:
@@ -87,6 +88,14 @@ const STATUS_EMOJI_SRC = '(?:[✅✔☑🚧⏳🔄▶⛔❌🛑⚠⏸🅿]\\uFE0
 const PARKED_WORDS =
   'parked|deferred|defer|cancelled|canceled|superseded|supersede[sd]?|abandoned|dropped|shelved|descoped|de-scoped|obsolete|wont-?fix|skipped|retired|withdrawn';
 const PARKED_FIELD = new RegExp(`^(?:${PARKED_WORDS})`);
+// Superseded is a subset of the parked vocabulary that means something
+// stronger: a successor replaced this work and it will not come back. It is
+// tested BEFORE the parked words wherever those are, but only when it LEADS the
+// value, so "PARKED — superseded by Phase 24" stays parked (the word that leads
+// is the one that decides) while "SUPERSEDED by Phase 24" is its own status.
+const SUPERSEDED_WORDS = 'superseded|supersede[sd]?';
+const SUPERSEDED_FIELD = new RegExp(`^(?:${SUPERSEDED_WORDS})`);
+const SUPERSEDED_WEAK = new RegExp(`(?:^|[|(\\[—–-]\\s*)\\**\\s*(?:${SUPERSEDED_WORDS})\\b`, 'i');
 // In prose the word must LEAD its clause — at the head of the line, or straight
 // after a cell/parenthesis/dash separator — because these words are far more
 // often used about some other phase than about this one. Phase 34.6's goal
@@ -117,6 +126,7 @@ function strongStatus(line) {
     // Parked is tested first: such a line usually also carries the reason it
     // stood down ("PARKED — superseded by the completed Phase 24"), so a later
     // test would happily read that reason as this phase's own status.
+    if (SUPERSEDED_FIELD.test(v)) return 'superseded';
     if (PARKED_FIELD.test(v)) return 'parked';
     if (/^(complete|completed|done|shipped|verified|closed)/.test(v)) return 'complete';
     if (/^(in-progress|inprogress|active|executing|current|wip|started|running)/.test(v)) return 'inprogress';
@@ -136,7 +146,9 @@ function strongStatus(line) {
 
 function weakStatus(line) {
   const l = line.toLowerCase();
-  if (PARKED_WEAK.test(stripLeadDecoration(l))) return 'parked';
+  const lead = stripLeadDecoration(l);
+  if (SUPERSEDED_WEAK.test(lead) && !PARKED_WEAK.test(lead.replace(SUPERSEDED_WEAK, ''))) return 'superseded';
+  if (PARKED_WEAK.test(lead)) return 'parked';
   if (/\b(complete|completed|done|shipped|verified)\b/.test(l)) return 'complete';
   if (/\b(in[-_ ]?progress|active|executing|wip|started)\b/.test(l)) return 'inprogress';
   if (/\b(blocked|failed|needs[-_ ]fix)\b/.test(l)) return 'blocked';
@@ -185,6 +197,7 @@ for (const w of PARKED_WORDS.split('|')) {
   // cannot drift. Regex-only alternatives (`supersede[sd]?`) are skipped.
   if (/^[a-z-]+$/.test(w)) ARTIFACT_LOOKUP.set(w, 'parked');
 }
+ARTIFACT_LOOKUP.set('superseded', 'superseded');
 
 /**
  * Map one frontmatter `status:` value to a status, or null if unrecognised.
@@ -814,8 +827,8 @@ function rollup(statuses) {
   if (!statuses.length) return 'unknown';
   // Parked children are out of the running, not part of it: a container whose
   // only unfinished phase was cancelled is finished, not stuck.
-  const live = statuses.filter((s) => s !== 'parked');
-  if (!live.length) return 'parked';
+  const live = statuses.filter((s) => s !== 'parked' && s !== 'superseded');
+  if (!live.length) return statuses.every((s) => s === 'superseded') ? 'superseded' : 'parked';
   statuses = live;
   if (statuses.includes('blocked')) return 'blocked';
   // Nothing is broken, but nothing moves until a person looks at it — that
@@ -863,7 +876,9 @@ function todoStatus(value) {
   // non-word character, so \b would read `open-question` as the bare idiom.
   const word = statusWord(value);
   if (word && word.toLowerCase() === 'open') return 'pending';
-  return artifactStatus(value);
+  // A superseded todo is stood down like a parked one; only phases tell them apart.
+  const s = artifactStatus(value);
+  return s === 'superseded' ? 'parked' : s;
 }
 
 /**

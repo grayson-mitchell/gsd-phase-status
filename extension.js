@@ -48,6 +48,10 @@ const STYLE = {
   // than grey because a parked phase is a decision, not an untouched backlog
   // item.
   parked:     { badge: '⊘', color: 'charts.purple',          label: 'Parked / cancelled' },
+  // Permanently replaced by a successor — unlike parked it will not be
+  // revived. Greyed out rather than purple so it reads as finished-and-gone.
+  // The FileDecoration API has no strikethrough, so badge + colour carry it.
+  superseded: { badge: '⇢', color: 'disabledForeground',    label: 'Superseded' },
   // Waiting on a person, not on code — a passed gate that nobody has run yet.
   // Shares charts.orange with `discussed`; they do not collide in practice
   // because discussed lands on phase FOLDERS and this lands on artifact FILES.

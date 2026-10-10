@@ -289,7 +289,14 @@ eq(p.strongStatus('**Status:** ✅ COMPLETE 2026-08-16'), 'complete',
   'parked: skipping the emoji still reads the word after ✅');
 eq(p.strongStatus('status: cancelled'), 'parked', 'parked: cancelled');
 eq(p.strongStatus('status: deferred to v0.9'), 'parked', 'parked: deferred');
-eq(p.strongStatus('- Status — superseded by Phase 24'), 'parked', 'parked: superseded');
+eq(p.strongStatus('- Status — superseded by Phase 24'), 'superseded', 'superseded: its own status, not parked');
+eq(p.strongStatus('**Status:** ⛔ SUPERSEDED 2026-07-21 by Phase 24 (permanent — will not be unparked).'), 'superseded',
+   'superseded: leading word wins over "unparked" later in the line');
+eq(p.weakStatus('Closed — superseded by Phase 34.18'), 'superseded', 'superseded: weak prose reader');
+eq(p.rollup(['complete', 'superseded']), 'complete', 'rollup: superseded does not hold back parent');
+eq(p.rollup(['superseded', 'superseded']), 'superseded', 'rollup: all superseded');
+eq(p.rollup(['superseded', 'parked']), 'parked', 'rollup: mixed stood-down children read parked');
+eq(p.todoStatus('superseded'), 'parked', 'todo: superseded todo stays purple (stood down)');
 eq(p.strongStatus('**Status:** ⛔ BLOCKED on the depot fix'), 'blocked',
   'parked: a genuinely blocked phase is still blocked');
 eq(p.strongStatus('**Status:** ⛔'), 'blocked', 'parked: a bare ⛔ keeps its old meaning');
@@ -557,8 +564,8 @@ eq(p.artifactKind('34.9-01-PLAN.md'), null, 'artifactKind: a plan is not a gate'
 {
   // A parked gate is out of the running, not part of it.
   const s = p.folderArtifactStatuses({ '34.2-HUMAN-UAT.md': { status: 'superseded' } });
-  eq(s, ['parked'], 'artifacts: parked vocabulary reads as parked');
-  eq(p.rollup(['complete'].concat(s)), 'complete', 'artifacts: a parked gate does not hold a folder back');
+  eq(s, ['superseded'], 'artifacts: superseded gate reads as superseded');
+  eq(p.rollup(['complete'].concat(s)), 'complete', 'artifacts: a superseded gate does not hold a folder back');
 }
 
 // --- Cycle reviews: a review round after the first ---

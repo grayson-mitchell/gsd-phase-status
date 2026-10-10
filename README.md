@@ -166,6 +166,7 @@ Built-in theme colour IDs, so they follow your theme:
 | Discussed | ◔ | `charts.orange` |
 | Blocked | ! | `charts.red` |
 | Parked / cancelled | ⊘ | `charts.purple` |
+| Superseded (permanent, replaced by a successor) | ⇢ | `disabledForeground` |
 | Needs a human | 🧍 | `charts.orange` |
 | Pending | ○ | `descriptionForeground` |
 
