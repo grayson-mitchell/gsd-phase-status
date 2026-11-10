@@ -442,6 +442,9 @@ eq(p.reviewStatus(rev('issues_found', 1), 'partial'), 'inprogress', 'review: a p
 eq(p.reviewStatus(rev('issues_found', 0), null), 'inprogress', 'review: findings, no fix pass');
 eq(p.reviewStatus(rev('issues_found', 4), null), 'blocked', 'review: an UNADDRESSED critical, read from findings.critical');
 eq(p.reviewStatus(rev('resolved', 1), null), 'complete', 'review: own status resolved still wins');
+// The reviewer's other terminal word: `clean` (no findings, or all resolved).
+eq(p.reviewStatus(rev('clean', 0), null), 'complete', 'review: own status clean is complete');
+eq(p.artifactStatus('clean'), 'complete', 'artifact: clean');
 eq(p.reviewStatus(rev('issues_found', '0   # open; 1 found, CR-01 fixed in 77f094bfd'), null), 'inprogress',
   'review: a commented critical count parses to 0');
 // A flat writer must keep working, and a review with no counts at all must not

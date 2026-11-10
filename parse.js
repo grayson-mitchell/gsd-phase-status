@@ -171,6 +171,9 @@ const ARTIFACT_STATUS = {
     'complete', 'completed', 'done', 'approved', 'validated', 'audited', 'verified',
     'secured', 'passed', 'pass', 'all-fixed', 'fixed', 'resolved', 'warnings-resolved',
     'closed', 'shipped', 'ready', 'accepted', 'signed-off',
+    // gsd-code-reviewer writes `status: clean | issues_found`; clean means
+    // "reviewed, nothing found" (or every finding resolved, as in 61-REVIEW.md).
+    'clean',
   ],
   // "partial" is the big one: 14 UAT/REVIEW-FIX files sit here, and it must not
   // read as pending — the work started and stopped, it was never untouched.
